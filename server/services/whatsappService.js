@@ -12,6 +12,25 @@ let client = null;
 let currentQrCodeDataUrl = null;
 let connectionStatus = 'DISCONNECTED'; // DISCONNECTED, INITIALIZING, QR_READY, CONNECTED
 
+const getSystemChromePath = () => {
+  const possiblePaths = [
+    '/usr/bin/google-chrome-stable',
+    '/usr/bin/google-chrome',
+    '/usr/bin/chromium',
+    '/usr/bin/chromium-browser',
+    '/home/harsha06/.cache/puppeteer/chrome/linux-146.0.7680.31/chrome-linux64/chrome'
+  ];
+
+  for (const p of possiblePaths) {
+    try {
+      if (fs.existsSync(p)) return p;
+    } catch (e) {
+      // Ignore
+    }
+  }
+  return undefined;
+};
+
 export const getWhatsappStatus = () => {
   let senderPhone = null;
   let senderName = null;
@@ -31,7 +50,8 @@ export const getWhatsappStatus = () => {
 
 export const initWhatsappService = async () => {
   try {
-    console.log('📱 [WhatsApp Service] Initializing LocalAuth WhatsApp Web client...');
+    const chromePath = getSystemChromePath();
+    console.log(`📱 [WhatsApp Service] Initializing LocalAuth WhatsApp Web client using Chrome at: ${chromePath || 'Default Puppeteer'}`);
     connectionStatus = 'INITIALIZING';
 
     // Remove any stale Chrome SingletonLock if left over from previous process crash
@@ -51,7 +71,13 @@ export const initWhatsappService = async () => {
       }),
       puppeteer: {
         headless: true,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage']
+        executablePath: chromePath,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
       }
     });
 
@@ -86,13 +112,12 @@ export const initWhatsappService = async () => {
     });
 
     client.initialize().catch(err => {
-      console.warn('⚠️ WhatsApp client init non-blocking warn:', err.message);
-      // Fallback mode enabled when puppeteer browser isn't interactive
+      console.error('❌ WhatsApp client init error:', err.message);
       connectionStatus = 'SIMULATION_MODE';
     });
 
   } catch (err) {
-    console.warn('⚠️ WhatsApp Service initialization warning:', err.message);
+    console.error('❌ WhatsApp Service initialization exception:', err.message);
     connectionStatus = 'SIMULATION_MODE';
   }
 };
@@ -100,7 +125,7 @@ export const initWhatsappService = async () => {
 /**
  * Format and dispatch rich WhatsApp alert payload (FR-3.1)
  */
-export const sendWhatsappNotification = async ({ userPhone, company, title, location, applyUrl, isWelcome }) => {
+export const sendWhatsappNotification = async ({ userPhone, company, portalUrl, checkIntervalHours, title, location, applyUrl, isWelcome, eventType }) => {
   let formattedMessage = '';
 
   if (isWelcome) {
@@ -115,6 +140,40 @@ You will now receive instant automated alerts whenever new job openings matching
 🔗 *Dashboard:* ${applyUrl || 'http://localhost:5173'}
 
 _Automated by Portalspy Engine_`;
+  } else if (eventType === 'PORTAL_ADDED') {
+    formattedMessage = 
+`➕ *PORTALSPY - NEW PORTAL TRACKED* 🌐
+
+🏢 *Company:* ${company}
+🔗 *Portal URL:* ${portalUrl}
+⏰ *Check Frequency:* Every ${checkIntervalHours || 6} hour(s)
+
+_Portalspy is now actively monitoring this career portal for new job updates!_`;
+  } else if (eventType === 'PORTAL_REMOVED') {
+    formattedMessage = 
+`🗑️ *PORTALSPY - PORTAL REMOVED* 🛑
+
+🏢 *Company:* ${company}
+🔗 *Portal URL:* ${portalUrl}
+
+_Automated tracking and job scraping for this company has been stopped._`;
+  } else if (eventType === 'PORTAL_UPDATED') {
+    formattedMessage = 
+`✏️ *PORTALSPY - PORTAL UPDATED* 🔄
+
+🏢 *Company:* ${company}
+🔗 *Target URL:* ${portalUrl}
+⏰ *Check Frequency:* Every ${checkIntervalHours || 6} hour(s)
+
+_Target portal configuration updated successfully._`;
+  } else if (eventType === 'FILTER_UPDATED') {
+    formattedMessage = 
+`⚙️ *PORTALSPY - FILTERS UPDATED* 🎯
+
+📋 *Criteria:* ${title}
+📍 *Locations:* ${location}
+
+_Scraper keyword & location filter criteria updated successfully._`;
   } else {
     formattedMessage = 
 `🎯 *PORTALSPY NEW JOB ALERT* 🚀

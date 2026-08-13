@@ -1,5 +1,6 @@
 import Portal from '../models/Portal.js';
-import { addScrapeJob } from '../queues/queueManager.js';
+import User from '../models/User.js';
+import { addScrapeJob, addWhatsappJob } from '../queues/queueManager.js';
 import { runPortalScrape } from '../services/scraperService.js';
 
 export const getPortals = async (req, res) => {
@@ -38,6 +39,18 @@ export const createPortal = async (req, res) => {
       console.warn('Queue scheduling warning:', err.message);
     });
 
+    // Notify user via WhatsApp on Portal Added
+    const user = await User.findById(req.user.id);
+    if (user?.whatsappNumber) {
+      addWhatsappJob({
+        userPhone: user.whatsappNumber,
+        company: portal.companyName,
+        portalUrl: portal.portalUrl,
+        checkIntervalHours: portal.checkIntervalHours,
+        eventType: 'PORTAL_ADDED'
+      }).catch(err => console.warn('WhatsApp event dispatch warning:', err.message));
+    }
+
     res.status(201).json({ message: 'Portal added successfully.', portal });
   } catch (err) {
     res.status(500).json({ message: 'Error creating portal.' });
@@ -70,6 +83,19 @@ export const updatePortal = async (req, res) => {
     }
 
     await portal.save();
+
+    // Notify user via WhatsApp on Portal Updated
+    const user = await User.findById(req.user.id);
+    if (user?.whatsappNumber) {
+      addWhatsappJob({
+        userPhone: user.whatsappNumber,
+        company: portal.companyName,
+        portalUrl: portal.portalUrl,
+        checkIntervalHours: portal.checkIntervalHours,
+        eventType: 'PORTAL_UPDATED'
+      }).catch(err => console.warn('WhatsApp event dispatch warning:', err.message));
+    }
+
     res.json({ message: 'Portal updated successfully.', portal });
   } catch (err) {
     res.status(500).json({ message: 'Error updating portal.' });
@@ -83,6 +109,18 @@ export const deletePortal = async (req, res) => {
     if (!portal) {
       return res.status(404).json({ message: 'Portal not found.' });
     }
+
+    // Notify user via WhatsApp on Portal Removed
+    const user = await User.findById(req.user.id);
+    if (user?.whatsappNumber) {
+      addWhatsappJob({
+        userPhone: user.whatsappNumber,
+        company: portal.companyName,
+        portalUrl: portal.portalUrl,
+        eventType: 'PORTAL_REMOVED'
+      }).catch(err => console.warn('WhatsApp event dispatch warning:', err.message));
+    }
+
     res.json({ message: 'Portal deleted successfully.' });
   } catch (err) {
     res.status(500).json({ message: 'Error deleting portal.' });

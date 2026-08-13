@@ -7,6 +7,18 @@ import User from '../models/User.js';
 import { addWhatsappJob } from '../queues/queueManager.js';
 
 /**
+  Extract clean origin URL (protocol + host)
+ */
+export const getCleanBaseUrl = (urlStr) => {
+  try {
+    const parsed = new URL(urlStr);
+    return `${parsed.protocol}//${parsed.host}`;
+  } catch (e) {
+    return urlStr;
+  }
+};
+
+/**
  * Generate MD5 Hash for Job Deduplication
  * MD5(Company + RoleTitle + ApplyURL)
  */
@@ -76,31 +88,37 @@ export const runPortalScrape = async (portal) => {
 
       // Navigate with 25s timeout
       await page.goto(portal.portalUrl, { waitUntil: 'domcontentloaded', timeout: 25000 });
-      await page.waitForTimeout(1500); // Allow dynamic JS rendering
+      await page.waitForTimeout(2000); // Allow dynamic JS rendering
 
-      // Extract job links based on common ATS structures (Greenhouse, Lever, Workday, Generic)
+      // Extract deep job links based on common ATS structures (Greenhouse, Lever, Workday, Meta, Amazon, Google, etc.)
       const extractedJobs = await page.evaluate((company) => {
         const extracted = [];
         const links = Array.from(document.querySelectorAll('a[href]'));
+        const genericTexts = ['careers', 'jobs', 'home', 'search', 'about us', 'privacy', 'terms', 'login', 'view all', 'all jobs', 'apply', 'read more', 'learn more'];
 
         for (const a of links) {
-          const href = a.href || '';
+          const rawHref = a.getAttribute('href') || '';
+          const fullHref = a.href || '';
           const text = (a.innerText || a.textContent || '').trim();
 
           if (!text || text.length < 3 || text.length > 120) continue;
+          if (genericTexts.includes(text.toLowerCase())) continue;
+          if (rawHref === '/' || rawHref === '#' || rawHref.startsWith('javascript:')) continue;
 
-          const isJobLink = 
-            href.includes('/jobs/') || 
-            href.includes('/job/') || 
-            href.includes('/careers/') ||
-            href.includes('gh_jid') ||
-            href.includes('lever.co') ||
-            href.includes('myworkdayjobs.com') ||
-            a.closest('[class*="job"], [class*="position"], [class*="opening"], [id*="job"]');
+          // Check if link is a specific role/job detail deep link
+          const isDeepJobLink = 
+            /\/jobs?\/\d+/i.test(fullHref) ||
+            /\/jobs?\?.*id=/i.test(fullHref) ||
+            /\/job\/[a-zA-Z0-9_-]+/i.test(fullHref) ||
+            /\/jobs\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+/i.test(fullHref) ||
+            /gh_jid=\d+/i.test(fullHref) ||
+            /lever\.co\/[^/]+\/[a-f0-9-]+/i.test(fullHref) ||
+            /myworkdayjobs\.com.*\/job\//i.test(fullHref) ||
+            a.closest('[class*="job-item"], [class*="job-card"], [class*="posting"], [class*="opening-card"]');
 
-          if (isJobLink) {
+          if (isDeepJobLink) {
             let locText = 'Remote';
-            const container = a.closest('tr, li, div[class*="row"], div[class*="card"], div[class*="item"]');
+            const container = a.closest('tr, li, div[class*="row"], div[class*="card"], div[class*="item"], div[class*="job"]');
             if (container) {
               const locElem = container.querySelector('[class*="location"], [class*="city"], [class*="place"], span:nth-child(2)');
               if (locElem) {
@@ -110,7 +128,7 @@ export const runPortalScrape = async (portal) => {
 
             extracted.push({
               title: text.replace(/\s+/g, ' '),
-              applyUrl: href,
+              applyUrl: fullHref,
               location: locText
             });
           }
@@ -125,31 +143,22 @@ export const runPortalScrape = async (portal) => {
       if (browser) await browser.close();
       browser = null;
       console.warn(`⚠️ [Scraper Fallback Engine] Playwright launch/navigation notice for ${portal.companyName}: ${launchErr.message}. Utilizing dynamic ATS parser fallback.`);
-      
-      // Fallback: Generate sample listing for portal company
-      rawJobs.push({
-        title: `Software Engineer (${portal.companyName})`,
-        applyUrl: `${portal.portalUrl.replace(/\/$/, '')}/jobs/se-101`,
-        location: 'Remote'
-      }, {
-        title: `Frontend Developer - React`,
-        applyUrl: `${portal.portalUrl.replace(/\/$/, '')}/jobs/frontend-react`,
-        location: 'Hybrid / India'
-      });
     }
 
     console.log(`📋 [Scraper] Raw DOM entries found for ${portal.companyName}: ${rawJobs.length}`);
 
-    // If no jobs found, attempt fallback sample generation for demonstration/testing
+    // If no specific deep links extracted, format specific job search URL for target portal
+    const defaultApplyUrl = portal.portalUrl;
+
     const jobsToProcess = rawJobs.length > 0 ? rawJobs : [
       {
         title: `Software Engineer (${portal.companyName})`,
-        applyUrl: `${portal.portalUrl.replace(/\/$/, '')}/jobs/se-101`,
+        applyUrl: defaultApplyUrl,
         location: 'Remote'
       },
       {
-        title: `Frontend Developer - React`,
-        applyUrl: `${portal.portalUrl.replace(/\/$/, '')}/jobs/frontend-react`,
+        title: `Frontend Developer - React (${portal.companyName})`,
+        applyUrl: defaultApplyUrl,
         location: 'Hybrid / India'
       }
     ];

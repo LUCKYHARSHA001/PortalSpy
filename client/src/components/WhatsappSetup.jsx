@@ -193,6 +193,14 @@ export default function WhatsappSetup({ user, whatsappStatus, onUpdatePhone, onT
                 </div>
               </div>
             </div>
+          ) : whatsappStatus?.status === 'INITIALIZING' ? (
+            <div style={{ textAlign: 'center', padding: '1.25rem 0.75rem', width: '100%' }}>
+              <RefreshCw size={36} color="var(--accent-cyan)" className="spin" style={{ marginBottom: '0.5rem' }} />
+              <h4 style={{ color: '#fff', margin: '0.2rem 0', fontSize: '0.95rem' }}>Initializing WhatsApp Engine...</h4>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                Launching headless Chrome. QR code will appear in 3–5 seconds...
+              </p>
+            </div>
           ) : (
             <div style={{ textAlign: 'center', padding: '0.75rem', width: '100%' }}>
               <ShieldCheck size={40} color="var(--accent-amber)" style={{ marginBottom: '0.4rem' }} />
