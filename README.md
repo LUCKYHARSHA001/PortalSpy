@@ -49,5 +49,4 @@ PortalSpy is a real-time web scraper and automated WhatsApp alert application de
    npm run dev
    ```
 
-## 📜 License
-MIT
+
