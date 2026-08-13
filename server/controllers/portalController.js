@@ -4,42 +4,7 @@ import { runPortalScrape } from '../services/scraperService.js';
 
 export const getPortals = async (req, res) => {
   try {
-    let portals = await Portal.find({ userId: req.user.id }).sort({ lastCheckedAt: -1, _id: -1 });
-    
-    // Auto-seed starter portals for new users so the dashboard is immediately populated
-    if (portals.length === 0) {
-      await Portal.create([
-        {
-          userId: req.user.id,
-          companyName: 'Stripe',
-          portalUrl: 'https://boards.greenhouse.io/stripe',
-          checkIntervalHours: 6,
-          status: 'ACTIVE',
-          consecutiveFailures: 0,
-          lastCheckedAt: new Date(Date.now() - 30 * 60 * 1000)
-        },
-        {
-          userId: req.user.id,
-          companyName: 'Linear App',
-          portalUrl: 'https://jobs.lever.co/linear',
-          checkIntervalHours: 1,
-          status: 'ACTIVE',
-          consecutiveFailures: 0,
-          lastCheckedAt: new Date(Date.now() - 10 * 60 * 1000)
-        },
-        {
-          userId: req.user.id,
-          companyName: 'Cloudflare',
-          portalUrl: 'https://www.cloudflare.com/careers/jobs',
-          checkIntervalHours: 12,
-          status: 'ACTIVE',
-          consecutiveFailures: 0,
-          lastCheckedAt: new Date(Date.now() - 2 * 3600 * 1000)
-        }
-      ]);
-      portals = await Portal.find({ userId: req.user.id }).sort({ lastCheckedAt: -1, _id: -1 });
-    }
-
+    const portals = await Portal.find({ userId: req.user.id }).sort({ lastCheckedAt: -1, _id: -1 });
     res.json({ portals });
   } catch (err) {
     res.status(500).json({ message: 'Error fetching portals.' });

@@ -13,9 +13,19 @@ let currentQrCodeDataUrl = null;
 let connectionStatus = 'DISCONNECTED'; // DISCONNECTED, INITIALIZING, QR_READY, CONNECTED
 
 export const getWhatsappStatus = () => {
+  let senderPhone = null;
+  let senderName = null;
+
+  if (connectionStatus === 'CONNECTED' && client?.info) {
+    senderPhone = client.info.wid?.user ? `+${client.info.wid.user}` : null;
+    senderName = client.info.pushname || null;
+  }
+
   return {
     status: connectionStatus,
-    qrCode: currentQrCodeDataUrl
+    qrCode: currentQrCodeDataUrl,
+    senderPhone,
+    senderName
   };
 };
 

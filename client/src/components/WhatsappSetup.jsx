@@ -38,12 +38,16 @@ export default function WhatsappSetup({ user, whatsappStatus, onUpdatePhone, onT
     setTestSending(true);
     try {
       await onTestNotification();
-      setMessageNotice({ type: 'success', text: 'Test WhatsApp alert queued and dispatched!' });
+      if (whatsappStatus?.status === 'CONNECTED') {
+        setMessageNotice({ type: 'success', text: '✅ Real test alert dispatched to your WhatsApp number!' });
+      } else {
+        setMessageNotice({ type: 'success', text: 'ℹ️ Dispatched in Simulation Mode (printed to server terminal). Click "Connect / Scan New QR Code" below to receive real messages on your phone!' });
+      }
     } catch (err) {
       setMessageNotice({ type: 'error', text: 'Failed to send test notification.' });
     } finally {
       setTestSending(false);
-      setTimeout(() => setMessageNotice(null), 3500);
+      setTimeout(() => setMessageNotice(null), 5000);
     }
   };
 
@@ -169,25 +173,41 @@ export default function WhatsappSetup({ user, whatsappStatus, onUpdatePhone, onT
                 alt="WhatsApp Web QR Code"
                 style={{ width: '180px', height: '180px', borderRadius: '12px', background: '#fff', padding: '8px' }}
               />
-              <p style={{ fontSize: '0.8rem', color: 'var(--accent-amber)', marginTop: '0.5rem' }}>
-                Open WhatsApp on your phone → Linked Devices → Scan QR Code
+              <p style={{ fontSize: '0.8rem', color: 'var(--accent-amber)', marginTop: '0.5rem', fontWeight: 600 }}>
+                📱 Open WhatsApp on your phone → Linked Devices → Scan QR Code
               </p>
             </div>
           ) : whatsappStatus?.status === 'CONNECTED' ? (
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <CheckCircle size={48} color="#34d399" style={{ marginBottom: '0.5rem' }} />
-              <h4 style={{ color: '#fff' }}>Session Authenticated</h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                Session token persisted on disk via <strong>LocalAuth</strong>. No QR re-scan required on server reboot.
-              </p>
+            <div style={{ textAlign: 'center', padding: '0.75rem', width: '100%' }}>
+              <CheckCircle size={40} color="#34d399" style={{ marginBottom: '0.4rem' }} />
+              <h4 style={{ color: '#fff', margin: '0.2rem 0', fontSize: '1rem' }}>WhatsApp Web Connected ✅</h4>
+              
+              <div style={{ margin: '0.75rem 0', padding: '0.65rem 0.85rem', background: 'rgba(7, 10, 18, 0.7)', borderRadius: '8px', border: '1px solid rgba(52, 211, 153, 0.3)', textAlign: 'left', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>📤 Sender Bot (FROM):</span>
+                  <strong style={{ color: '#34d399' }}>{whatsappStatus.senderPhone || 'Connected Session'}</strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>📥 Target Alerts (TO):</span>
+                  <strong style={{ color: 'var(--accent-cyan)' }}>{user?.whatsappNumber || fullNumber || 'Not set'}</strong>
+                </div>
+              </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '1rem' }}>
-              <ShieldCheck size={48} color="var(--accent-cyan)" style={{ marginBottom: '0.5rem' }} />
-              <h4 style={{ color: '#fff' }}>Notification Engine Ready</h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                System operating in active alert dispatch mode. Incoming job alerts will automatically format and send to <strong>{user?.whatsappNumber || fullNumber || 'your registered phone number'}</strong>.
-              </p>
+            <div style={{ textAlign: 'center', padding: '0.75rem', width: '100%' }}>
+              <ShieldCheck size={40} color="var(--accent-amber)" style={{ marginBottom: '0.4rem' }} />
+              <h4 style={{ color: 'var(--accent-amber)', margin: '0.2rem 0', fontSize: '1rem' }}>Simulation / Unlinked Mode</h4>
+              
+              <div style={{ margin: '0.75rem 0', padding: '0.65rem 0.85rem', background: 'rgba(7, 10, 18, 0.7)', borderRadius: '8px', border: '1px solid rgba(251, 113, 133, 0.3)', textAlign: 'left', fontSize: '0.8rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>📤 Sender Bot (FROM):</span>
+                  <span style={{ color: '#fb7185' }}>Unlinked (Waiting for QR scan)</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>📥 Target Alerts (TO):</span>
+                  <strong style={{ color: 'var(--accent-cyan)' }}>{user?.whatsappNumber || fullNumber || 'Not set'}</strong>
+                </div>
+              </div>
             </div>
           )}
 
@@ -196,11 +216,11 @@ export default function WhatsappSetup({ user, whatsappStatus, onUpdatePhone, onT
             className="btn btn-secondary btn-sm"
             onClick={handleResetSessionClick}
             disabled={resettingSession}
-            style={{ marginTop: '1rem', fontSize: '0.78rem' }}
-            title="Unlink current WhatsApp Web session and generate a new QR code"
+            style={{ marginTop: '0.5rem', fontSize: '0.78rem' }}
+            title="Generate a fresh QR code to pair WhatsApp"
           >
             <RefreshCw size={13} className={resettingSession ? 'spin' : ''} />
-            {resettingSession ? 'Resetting Session...' : 'Unlink & Scan New QR Code'}
+            {resettingSession ? 'Generating QR Code...' : 'Connect / Scan New QR Code'}
           </button>
         </div>
       </div>
