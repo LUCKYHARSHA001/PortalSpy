@@ -1,0 +1,9 @@
+{
+  "watch": ["server.js", "controllers", "services", "routes", "models", "queues", "config"],
+  "ext": "js,json",
+  "ignore": [
+    ".wwebjs_auth/*",
+    ".wwebjs_cache/*",
+    "node_modules/*"
+  ]
+}
