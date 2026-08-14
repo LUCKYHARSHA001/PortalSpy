@@ -137,7 +137,7 @@ export const sendWhatsappNotification = async ({ userPhone, company, portalUrl, 
 
 You will now receive instant automated alerts whenever new job openings matching your keyword & location filters are discovered across tracked career portals.
 
-🔗 *Dashboard:* ${applyUrl || 'http://localhost:5173'}
+🔗 *Dashboard:* ${applyUrl || process.env.CLIENT_URL || 'http://localhost:5173'}
 
 _Automated by Portalspy Engine_`;
   } else if (eventType === 'PORTAL_ADDED') {

@@ -42,7 +42,7 @@ export const updateFilters = async (req, res) => {
         company: 'Portalspy Engine',
         title: `Include: ${filter.includeTerms.join(', ') || 'None'} | Exclude: ${filter.excludeTerms.join(', ') || 'None'}`,
         location: filter.locations.join(', ') || 'Any',
-        applyUrl: 'http://localhost:5173',
+        applyUrl: process.env.CLIENT_URL || 'http://localhost:5173',
         eventType: 'FILTER_UPDATED'
       }).catch(err => console.warn('WhatsApp event dispatch warning:', err.message));
     }

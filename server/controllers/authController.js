@@ -69,7 +69,7 @@ export const register = async (req, res) => {
         company: 'Portalspy Engine',
         title: 'Notifications Activated',
         location: 'Onboarding',
-        applyUrl: 'http://localhost:5173'
+        applyUrl: process.env.CLIENT_URL || 'http://localhost:5173'
       }).catch(e => console.warn('Welcome WhatsApp notification dispatch warn:', e.message));
     }
 
