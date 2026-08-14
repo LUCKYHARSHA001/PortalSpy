@@ -5,11 +5,11 @@ import User from '../models/User.js';
 import Filter from '../models/Filter.js';
 import { addWhatsappJob } from '../queues/queueManager.js';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'portalspy_super_secret_jwt_key_2026';
+const getJwtSecret = () => process.env.JWT_SECRET || 'portalspy_super_secret_jwt_key_2026';
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 const generateToken = (userId, email) => {
-  return jwt.sign({ id: userId, email }, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign({ id: userId, email }, getJwtSecret(), { expiresIn: '7d' });
 };
 
 // E.164 international standard phone validation regex (+ followed by 8 to 15 digits)

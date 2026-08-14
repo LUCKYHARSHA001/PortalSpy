@@ -1,20 +1,25 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
-import dotenv from 'dotenv';
 import apiRouter from './routes/api.js';
 import { connectDB } from './config/db.js';
 import { initQueues } from './queues/queueManager.js';
 import { initWhatsappService } from './services/whatsappService.js';
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS Middleware setup
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+  origin: allowedOrigins,
   credentials: true
 }));
 

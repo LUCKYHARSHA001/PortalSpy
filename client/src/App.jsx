@@ -31,17 +31,32 @@ export default function App() {
 
   const fetchInitialData = async () => {
     try {
-      // 1. Check current logged-in user
+      const storedToken = localStorage.getItem('portalspy_token');
+      if (storedToken) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
+      }
+
+      // 1. Check current logged-in user session
       const meRes = await axios.get('/auth/me').catch(() => null);
       if (meRes?.data?.user) {
         setUser(meRes.data.user);
         await refreshDashboardData();
       } else {
-        // Auto demo login fallback for seamless preview
-        const demoLogin = await axios.post('/auth/login', { email: 'demo@portalspy.io', password: 'password123' }).catch(() => null);
-        if (demoLogin?.data?.user) {
-          setUser(demoLogin.data.user);
-          await refreshDashboardData();
+        // Clear invalid/expired token if /auth/me failed
+        localStorage.removeItem('portalspy_token');
+        delete axios.defaults.headers.common['Authorization'];
+
+        // Auto demo login fallback only when no previous user session was saved
+        if (!storedToken) {
+          const demoLogin = await axios.post('/auth/login', { email: 'demo@portalspy.io', password: 'password123' }).catch(() => null);
+          if (demoLogin?.data?.user) {
+            if (demoLogin.data.token) {
+              localStorage.setItem('portalspy_token', demoLogin.data.token);
+              axios.defaults.headers.common['Authorization'] = `Bearer ${demoLogin.data.token}`;
+            }
+            setUser(demoLogin.data.user);
+            await refreshDashboardData();
+          }
         }
       }
     } finally {
@@ -79,24 +94,38 @@ export default function App() {
   // Auth Handlers
   const handleLogin = async ({ email, password }) => {
     const res = await axios.post('/auth/login', { email, password });
+    if (res.data?.token) {
+      localStorage.setItem('portalspy_token', res.data.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+    }
     setUser(res.data.user);
     await refreshDashboardData();
   };
 
   const handleRegister = async ({ email, password, whatsappNumber }) => {
     const res = await axios.post('/auth/register', { email, password, whatsappNumber });
+    if (res.data?.token) {
+      localStorage.setItem('portalspy_token', res.data.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+    }
     setUser(res.data.user);
     await refreshDashboardData();
   };
 
   const handleGoogleLogin = async (googleAuthData) => {
     const res = await axios.post('/auth/google', googleAuthData);
+    if (res.data?.token) {
+      localStorage.setItem('portalspy_token', res.data.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${res.data.token}`;
+    }
     setUser(res.data.user);
     await refreshDashboardData();
   };
 
   const handleLogout = async () => {
     await axios.post('/auth/logout').catch(() => null);
+    localStorage.removeItem('portalspy_token');
+    delete axios.defaults.headers.common['Authorization'];
     setUser(null);
     setPortals([]);
     setAlerts([]);
