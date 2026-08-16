@@ -44,7 +44,8 @@ export default function WhatsappSetup({ user, whatsappStatus, onUpdatePhone, onT
         setMessageNotice({ type: 'success', text: 'ℹ️ Dispatched in Simulation Mode (printed to server terminal). Click "Connect / Scan New QR Code" below to receive real messages on your phone!' });
       }
     } catch (err) {
-      setMessageNotice({ type: 'error', text: 'Failed to send test notification.' });
+      const errorText = err.response?.data?.message || err.message || 'Failed to send test notification.';
+      setMessageNotice({ type: 'error', text: errorText });
     } finally {
       setTestSending(false);
       setTimeout(() => setMessageNotice(null), 5000);

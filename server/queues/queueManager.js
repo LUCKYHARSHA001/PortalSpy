@@ -27,6 +27,7 @@ export const initQueues = () => {
 
     scrapeWorker.on('completed', (job) => console.log(`✅ [Scrape Worker] Job ${job.id} completed.`));
     scrapeWorker.on('failed', (job, err) => console.error(`❌ [Scrape Worker] Job ${job?.id} failed: ${err.message}`));
+    scrapeWorker.on('error', (err) => console.warn(`⚠️ [Scrape Worker Redis Alert]: ${err.message}`));
 
     // 2. WhatsApp Queue setup (FR-3.2 Rate Limiting: 3-6s randomized delays)
     whatsappQueue = new Queue('whatsappQueue', { connection: redisOptions });
@@ -48,6 +49,7 @@ export const initQueues = () => {
 
     whatsappWorker.on('completed', (job) => console.log(`✅ [WhatsApp Worker] Dispatch ${job.id} completed.`));
     whatsappWorker.on('failed', (job, err) => console.error(`❌ [WhatsApp Worker] Dispatch ${job?.id} failed: ${err.message}`));
+    whatsappWorker.on('error', (err) => console.warn(`⚠️ [WhatsApp Worker Redis Alert]: ${err.message}`));
 
     console.log('⚡ [Queue Engine] BullMQ Scrape and WhatsApp Queues Initialized successfully.');
   } catch (err) {
@@ -63,16 +65,22 @@ export const addScrapeJob = async (portalId, portalUrl, intervalHours) => {
     return;
   }
 
-  await scrapeQueue.add(
-    `scrape_${portalId}`,
-    { portalId, portalUrl },
-    {
-      repeat: {
-        every: intervalHours * 60 * 60 * 1000 // Repeat every X hours
-      },
-      jobId: `repeat_${portalId}`
-    }
-  );
+  try {
+    await scrapeQueue.add(
+      `scrape_${portalId}`,
+      { portalId, portalUrl },
+      {
+        repeat: {
+          every: intervalHours * 60 * 60 * 1000 // Repeat every X hours
+        },
+        jobId: `repeat_${portalId}`
+      }
+    );
+  } catch (err) {
+    console.warn('⚠️ Scrape Queue push failed (falling back to direct execution):', err.message);
+    const portal = await Portal.findById(portalId);
+    if (portal) runPortalScrape(portal).catch(e => console.error(e.message));
+  }
 };
 
 export const addWhatsappJob = async (payload) => {
@@ -82,5 +90,10 @@ export const addWhatsappJob = async (payload) => {
     return;
   }
 
-  await whatsappQueue.add('send_whatsapp_alert', { payload });
+  try {
+    await whatsappQueue.add('send_whatsapp_alert', { payload });
+  } catch (err) {
+    console.warn('⚠️ WhatsApp Queue push failed (falling back to direct dispatch):', err.message);
+    await sendWhatsappNotification(payload);
+  }
 };

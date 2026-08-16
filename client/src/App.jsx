@@ -182,6 +182,9 @@ export default function App() {
     try {
       await axios.post('/alerts/test');
     } catch (err) {
+      if (err.response?.data?.message) {
+        throw err;
+      }
       if (alerts.length > 0) {
         await axios.post(`/alerts/${alerts[0]._id}/resend`);
       } else {
